@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isHoneypotPath, requestPathname } from '../../src/honeypot.middleware'
+import { isHoneypotPath, requestPathname } from '../../src/honeypot.path'
 
 describe('isHoneypotPath with configured path /admin', () => {
   const target = '/admin'

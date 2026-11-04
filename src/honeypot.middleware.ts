@@ -1,42 +1,11 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { NestMiddleware } from '@nestjs/common'
 import { Inject, Injectable } from '@nestjs/common'
-import { HONEYPOT_OPTIONS } from './honeypot.constants'
+import { HONEYPOT_HIT_EVENT, HONEYPOT_OPTIONS } from './honeypot.constants'
 import type { HoneypotOptions } from './honeypot.options'
-
-/**
- * Removes the trailing slashes of a pathname (`/admin/` -> `/admin`).
- * The root `/` stays `/`.
- */
-function normalizePath(path: string): string {
-  let end = path.length
-  while (end > 1 && path[end - 1] === '/') {
-    end--
-  }
-  return path.slice(0, end).toLowerCase()
-}
-
-/**
- * Whether `pathname` hits the protected `configuredPath`.
- *
- * Matching is case-insensitive, treats trailing slashes as equivalent and
- * covers nested paths: `/admin` protects `/admin/login` but not
- * `/administrator`. Query strings must be stripped before calling.
- */
-export function isHoneypotPath(pathname: string, configuredPath: string): boolean {
-  const normalized = normalizePath(pathname)
-  const target = normalizePath(configuredPath)
-  return normalized === target || normalized.startsWith(`${target}/`)
-}
-
-/** Extracts the pathname of a raw request URL, dropping query and fragment. */
-export function requestPathname(url: string | undefined): string {
-  const raw = url ?? '/'
-  const end = [raw.indexOf('?'), raw.indexOf('#')]
-    .filter((index) => index !== -1)
-    .reduce((min, index) => Math.min(min, index), raw.length)
-  return raw.slice(0, end) || '/'
-}
+import { isHoneypotPath, requestPathname } from './honeypot.path'
+import type { HoneypotHitEvent } from './honeypot.types'
+import { renderDefaultLoginPage } from './template'
 
 /**
  * Request type carrying `originalUrl`: Express (and adapters mounting the
@@ -44,6 +13,30 @@ export function requestPathname(url: string | undefined): string {
  * so the full externally requested path only survives in `originalUrl`.
  */
 export type HoneypotRequest = IncomingMessage & { originalUrl?: string }
+
+/** Caps user-agent length in log lines; event payloads keep the full value. */
+const LOG_USER_AGENT_LIMIT = 200
+
+/** Client IP: request `ip` when genuinely present, else the socket address. */
+function clientIp(request: HoneypotRequest): string | null {
+  const ip = (request as { ip?: unknown }).ip
+  if (typeof ip === 'string' && ip.length > 0) {
+    return ip
+  }
+  return request.socket?.remoteAddress ?? null
+}
+
+function requestUserAgent(request: IncomingMessage): string {
+  const header = request.headers['user-agent']
+  if (Array.isArray(header)) {
+    return header[0] ?? ''
+  }
+  return header ?? ''
+}
+
+function truncate(value: string, limit: number): string {
+  return value.length > limit ? `${value.slice(0, limit)}…` : value
+}
 
 @Injectable()
 export class HoneypotMiddleware implements NestMiddleware {
@@ -57,9 +50,50 @@ export class HoneypotMiddleware implements NestMiddleware {
       next()
       return
     }
-    // Placeholder termination — response strategies are implemented in the
-    // next phase.
+
+    const hit: HoneypotHitEvent = {
+      ip: clientIp(request),
+      userAgent: requestUserAgent(request),
+      method: request.method ?? '',
+      path: pathname,
+      timestamp: new Date().toISOString(),
+    }
+    this.reportHit(hit)
+
+    if (this.options.fakeAdminUrl !== undefined) {
+      response.statusCode = 302
+      response.setHeader('Location', this.options.fakeAdminUrl)
+      response.end()
+      return
+    }
+
+    const html =
+      this.options.customHtml !== undefined
+        ? this.options.customHtml
+        : renderDefaultLoginPage(this.options.path)
     response.statusCode = 200
-    response.end()
+    response.setHeader('Content-Type', 'text/html; charset=utf-8')
+    response.setHeader('Cache-Control', 'no-store')
+    response.end(html)
+  }
+
+  /** Logs and emits the hit; neither failure may block the response. */
+  private reportHit(hit: HoneypotHitEvent): void {
+    try {
+      this.options.logger.warn(
+        `Honeypot hit: ${hit.method} ${hit.path} from ${hit.ip ?? 'unknown ip'} ` +
+          `(user-agent: ${truncate(hit.userAgent, LOG_USER_AGENT_LIMIT)})`,
+      )
+    } catch {
+      // A broken logger must not prevent the honeypot response.
+    }
+    const { eventEmitter } = this.options
+    if (eventEmitter) {
+      try {
+        eventEmitter.emit(HONEYPOT_HIT_EVENT, hit)
+      } catch {
+        // A throwing listener must not prevent the honeypot response.
+      }
+    }
   }
 }
