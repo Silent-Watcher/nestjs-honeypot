@@ -4,8 +4,8 @@ Status tracker for AI agents. Update after every phase.
 
 ## Current stage
 
-**Phase 4 — Integration Tests, Compatibility, and Feature Gap Review** (next;
-Phase 3 complete, awaiting owner approval to continue)
+**Phase 4 — complete.** Phase 5 documentation site was committed earlier
+(`fa9b85d`); visual polish + logo and Phase 6 release work follow.
 
 ## Phase status
 
@@ -14,7 +14,7 @@ Phase 3 complete, awaiting owner approval to continue)
 | 1     | Project Foundation                     | ✅ done        |
 | 2     | NestJS Module and Public API           | ✅ done        |
 | 3     | Core Honeypot Functionality            | ✅ done        |
-| 4     | Integration Tests + Feature Gap Review | ⬜ next        |
+| 4     | Integration Tests + Feature Gap Review | ✅ done        |
 | 5     | VitePress Documentation + README       | ⬜ not started |
 | 6     | Final QA + Release Readiness           | ⬜ not started |
 
@@ -92,19 +92,68 @@ of the middleware), `src/template.ts` (escapeHtml + renderDefaultLoginPage),
 80 tests pass; coverage ~99% statements. Commit
 `feat: implement honeypot responses, logging, events, and url validation`.
 
-## Phase 4 — what to do
+## Phase 4 — completed work
 
-Integration tests with real Nest apps in `test/integration/`:
+`test/integration/express.test.ts` (19 tests) and
+`test/integration/fastify.test.ts` (18 tests), real Nest apps through
+supertest. Total suite: 123 tests.
 
-- Express: default + custom path, nested paths, unrelated paths, all HTTP
-  methods, default template, custom HTML, redirect, logger, event emission,
-  forRootAsync, global prefix (`app.setGlobalPrefix('api')` + path
-  `/api/admin`), requests without IP/User-Agent, HEAD responses.
-- Fastify (`FastifyAdapter`): same core behaviors — especially raw
-  request/response compat, headers, HTML, redirect, methods, termination.
-  CHECK: whether `req.originalUrl` exists on Fastify middleware requests
-  (Express-only field); adjust `HoneypotRequest` handling if needed.
-- Feature gap review against the full spec; write explicit analysis.
+Covered on **both** adapters: default + custom path, nested paths, trailing
+slash, case-insensitivity, all HTTP methods, HEAD, unrelated paths (incl.
+`/administrator`) reaching their controllers, query strings ignored, default
+template + headers, custom HTML, 302 redirect, logger (once per hit, not on
+other routes), events (once per hit, also on redirects), `forRootAsync`,
+global prefix (`/api/admin`, bare `/admin` not intercepted), raw-socket
+request without User-Agent (IP falls back to the socket address).
+
+### Fastify findings
+
+- `req.originalUrl` **is** available on Fastify middleware requests (Nest's
+  Fastify adapter mounts middleware through `@fastify/middie`, which sets
+  it), and the `req.url ?? originalUrl` fallback is not needed. The
+  `originalUrl ?? url` read in `HoneypotMiddleware` works on both adapters;
+  no production change was required.
+- Fastify middleware receives the raw Node `IncomingMessage`, which has no
+  `ip`; the IP therefore comes from `socket.remoteAddress` on Fastify and
+  from `request.ip` on Express. Behind a proxy both report the proxy unless
+  the app is configured for trusted proxies (documented in `security.md`).
+- Fastify instances must be `ready()` before supertest can use
+  `getHttpServer()`; the test helper `initFastifyApp` does this.
+
+### Feature gap review
+
+| Requirement                                    | Status                                   |
+| ---------------------------------------------- | ---------------------------------------- |
+| Configurable path, default `/admin`            | ✅ validated, case/slash/nested matching |
+| Default fake login page, no external assets    | ✅ escaped, `no-store`                   |
+| `customHtml` served as-is                      | ✅ incl. empty string                    |
+| `fakeAdminUrl` 302, beats `customHtml`         | ✅ scheme/loop validation                |
+| Logger integration (default Nest `Logger`)     | ✅ one `warn` per hit, error-isolated    |
+| EventEmitter `honeypotHit` events              | ✅ every response mode, error-isolated   |
+| `forRoot` / `forRootAsync`                     | ✅ both adapters                         |
+| Express + Fastify support                      | ✅ verified by integration tests         |
+| No runtime dependencies, ESM + CJS + types     | ✅ (consumer check in Phase 6)           |
+| Never reads bodies/credentials, no XFF parsing | ✅                                       |
+
+Gap found and fixed during the review (`fix: match encoded and repeated-slash
+request paths`):
+
+- Fastify decodes the URL before routing, so `/%61dmin` bypassed the honeypot
+  and reached a real `/admin` route; `//admin` and configured non-ASCII paths
+  (request side is percent-encoded UTF-8) were never matched either. Matching
+  now compares percent-decoded paths with repeated slashes collapsed
+  (`honeypot.path.ts`, malformed escapes fall back to ASCII-only decoding).
+  Only the comparison is normalized: logs and events keep the raw pathname,
+  so `%0A` cannot inject lines into log output. Regression tests: unit +
+  both adapters with a shadowed real `/admin` controller.
+
+Known limitations (no code change):
+
+- Dot segments (`/./admin`) and path parameters (`/admin;x=1`) are compared
+  literally. Mainstream clients normalize dot segments before sending, and
+  neither adapter routes `;` variants to the real `/admin` route.
+- Absolute `fakeAdminUrl` values are not loop-checked (origin unknown at
+  configuration time).
 
 ## Definition of done (final, phase 6)
 
