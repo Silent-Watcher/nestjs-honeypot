@@ -4,8 +4,8 @@ Status tracker for AI agents. Update after every phase.
 
 ## Current stage
 
-**Phase 3 — Core Honeypot Functionality** (next; Phase 2 complete, awaiting
-owner approval to continue)
+**Phase 4 — Integration Tests, Compatibility, and Feature Gap Review** (next;
+Phase 3 complete, awaiting owner approval to continue)
 
 ## Phase status
 
@@ -13,8 +13,8 @@ owner approval to continue)
 | ----- | -------------------------------------- | -------------- |
 | 1     | Project Foundation                     | ✅ done        |
 | 2     | NestJS Module and Public API           | ✅ done        |
-| 3     | Core Honeypot Functionality            | ⬜ next        |
-| 4     | Integration Tests + Feature Gap Review | ⬜ not started |
+| 3     | Core Honeypot Functionality            | ✅ done        |
+| 4     | Integration Tests + Feature Gap Review | ⬜ next        |
 | 5     | VitePress Documentation + README       | ⬜ not started |
 | 6     | Final QA + Release Readiness           | ⬜ not started |
 
@@ -64,34 +64,47 @@ Source files: `honeypot.constants.ts`, `honeypot.types.ts`,
   so user factories with concrete parameter types stay assignable without
   `any`; the provider calls it with injected deps.
 
-## Phase 3 — what to do
+## Phase 3 — completed work
 
-In `src/`:
+New files: `src/honeypot.path.ts` (matching + pathname extraction, moved out
+of the middleware), `src/template.ts` (escapeHtml + renderDefaultLoginPage),
+`test/unit/{template,middleware}.test.ts`.
 
-1. Finalize response behavior in `HoneypotMiddleware`:
-   - default built-in HTML admin login page (`template.ts`): valid HTML5,
-     username/password inputs, POST form whose action uses the CONFIGURED
-     path (never hardcoded `/admin`), HTML-escape interpolated values, status
-     200, `Content-Type: text/html; charset=utf-8`, `Cache-Control: no-store`.
-   - `customHtml`: raw HTML as-is, correct content type, empty string wins
-     over default (do not treat '' as falsy-default), no filesystem APIs.
-   - `fakeAdminUrl`: 302 redirect to Location header; relative paths and
-     absolute http/https only; reject unsafe schemes; consider redirect-loop
-     when destination is inside the protected path; precedence redirect >
-     customHtml > default (document + test).
-2. Logger: `logger.warn(...)` on every hit with method, path, ip (metadata
-   only — never bodies/credentials/cookies/auth headers; bound user-agent).
-   Logger failure must not break the response (try/catch).
-3. Events: optional `EventEmitter`, emit `HONEYPOT_HIT_EVENT` =
-   `'honeypotHit'` for EVERY response mode, at most once per request, payload
-   `HoneypotHitEvent` (ip|null, userAgent, method, path, ISO timestamp, no
-   query/body). Isolate listener sync exceptions. Skip when not configured.
-4. IP: `request.ip` only if genuinely present, else `socket.remoteAddress`,
-   else null. Never parse X-Forwarded-For. Do NOT read request body anywhere.
-5. Error isolation around logging and emission; never leak user-agent into
-   logs unbounded (truncate).
+- Default response: built-in HTML5 admin login page (inline CSS only, no
+  external refs), POST form action = configured path, HTML-escaped, 200 +
+  `text/html; charset=utf-8` + `Cache-Control: no-store`. Submitted
+  credentials never read.
+- `customHtml`: raw string served as-is (empty string works — checked with
+  `!== undefined`, not truthiness), same headers.
+- `fakeAdminUrl`: 302 + Location; precedence redirect > customHtml > default.
+  Validated at config time: absolute http/https or root-relative only;
+  rejects javascript:/data:/ftp:/protocol-relative; rejects relative
+  destinations inside the protected path (redirect loop). Absolute URLs are
+  not loop-checked (origin unknown at config time).
+- Logger: one `warn` per hit — method, path, ip, user-agent truncated to 200
+  chars. No bodies/credentials. Logger throw isolated with try/catch.
+- Events: `HONEYPOT_HIT_EVENT` = 'honeypotHit' via options.eventEmitter for
+  every response mode, once per request; payload `{ ip, userAgent, method,
+  path, timestamp }` (ISO 8601, no query/body). Listener throws isolated.
+- IP: `request.ip` if a non-empty string, else `socket.remoteAddress`, else
+  null. X-Forwarded-For never parsed.
 
-Unit tests alongside. Do not break Phase 2 wiring tests.
+80 tests pass; coverage ~99% statements. Commit
+`feat: implement honeypot responses, logging, events, and url validation`.
+
+## Phase 4 — what to do
+
+Integration tests with real Nest apps in `test/integration/`:
+
+- Express: default + custom path, nested paths, unrelated paths, all HTTP
+  methods, default template, custom HTML, redirect, logger, event emission,
+  forRootAsync, global prefix (`app.setGlobalPrefix('api')` + path
+  `/api/admin`), requests without IP/User-Agent, HEAD responses.
+- Fastify (`FastifyAdapter`): same core behaviors — especially raw
+  request/response compat, headers, HTML, redirect, methods, termination.
+  CHECK: whether `req.originalUrl` exists on Fastify middleware requests
+  (Express-only field); adjust `HoneypotRequest` handling if needed.
+- Feature gap review against the full spec; write explicit analysis.
 
 ## Definition of done (final, phase 6)
 
