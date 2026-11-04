@@ -288,3 +288,19 @@ describe('logger', () => {
     expect(warn).not.toHaveBeenCalled()
   })
 })
+
+describe('HoneypotMiddleware with encoded request paths', () => {
+  it('intercepts but reports the raw pathname, never the decoded one', () => {
+    const emitter = new EventEmitter()
+    const hits: HoneypotHitEvent[] = []
+    emitter.on(HONEYPOT_HIT_EVENT, (hit: HoneypotHitEvent) => hits.push(hit))
+    const middleware = createMiddleware({ path: '/admin', eventEmitter: emitter })
+    const response = fakeResponse()
+    const next = vi.fn()
+    middleware.use(fakeRequest({ originalUrl: '/%61dmin/%0Alogin?x=1' }), response, next)
+    expect(next).not.toHaveBeenCalled()
+    expect(response.statusCode).toBe(200)
+    expect(hits).toHaveLength(1)
+    expect(hits[0]?.path).toBe('/%61dmin/%0Alogin')
+  })
+})

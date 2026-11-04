@@ -279,3 +279,34 @@ describe('Honeypot integration (Express, logger)', () => {
     }
   })
 })
+
+@Controller()
+class ShadowedAdminController {
+  @Get('admin')
+  admin(): string {
+    return 'REAL ADMIN'
+  }
+}
+
+@Module({ controllers: [ShadowedAdminController] })
+class ShadowedAdminModule {}
+
+describe('Honeypot integration (Express, encoded and repeated slashes)', () => {
+  it('masks a shadowed real route for every encoded variant of the path', async () => {
+    const module = await Test.createTestingModule({
+      imports: [HoneypotModule.forRoot({ path: '/admin' }), ShadowedAdminModule],
+    }).compile()
+    const realApp = module.createNestApplication()
+    await realApp.init()
+    try {
+      for (const path of ['/admin', '/%61dmin', '/%41dmin/login', '//admin', '/admin//login']) {
+        const response = await request(realApp.getHttpServer()).get(path)
+        expect(response.status, path).toBe(200)
+        expect(response.text, path).toContain('type="password"')
+        expect(response.text, path).not.toContain('REAL ADMIN')
+      }
+    } finally {
+      await realApp.close()
+    }
+  })
+})

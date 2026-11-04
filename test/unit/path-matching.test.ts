@@ -56,3 +56,32 @@ describe('requestPathname', () => {
     expect(requestPathname('/admin/login')).toBe('/admin/login')
   })
 })
+
+describe('isHoneypotPath normalization', () => {
+  it('matches percent-encoded ASCII variants', () => {
+    expect(isHoneypotPath('/%61dmin', '/admin')).toBe(true)
+    expect(isHoneypotPath('/%41DMIN/login', '/admin')).toBe(true)
+    expect(isHoneypotPath('/admin%2Flogin', '/admin')).toBe(true)
+  })
+
+  it('collapses repeated slashes', () => {
+    expect(isHoneypotPath('//admin', '/admin')).toBe(true)
+    expect(isHoneypotPath('/admin//login', '/admin')).toBe(true)
+    expect(isHoneypotPath('///admin///', '/admin')).toBe(true)
+  })
+
+  it('matches a configured non-ASCII path against its encoded request form', () => {
+    expect(isHoneypotPath('/%D9%BE%D9%86%D9%84', '/پنل')).toBe(true)
+    expect(isHoneypotPath('/%D9%BE%D9%86%D9%84/login', '/پنل')).toBe(true)
+  })
+
+  it('still decodes ASCII escapes when other escapes are malformed', () => {
+    expect(isHoneypotPath('/%61dmin%E0%A4%A', '/admin')).toBe(false)
+    expect(isHoneypotPath('/%61dmin/%E0%A4%A', '/admin')).toBe(true)
+  })
+
+  it('does not widen matching to lookalike paths', () => {
+    expect(isHoneypotPath('/%61dministrator', '/admin')).toBe(false)
+    expect(isHoneypotPath('/x/admin', '/admin')).toBe(false)
+  })
+})
