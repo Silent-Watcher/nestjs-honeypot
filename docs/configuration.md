@@ -15,7 +15,8 @@ All options are passed to `HoneypotModule.forRoot()` (or produced by the
 The protected pathname, matched against the full externally requested path —
 including a [global prefix](/adapters#global-prefix) if you set one. Matching
 is case-insensitive, ignores query strings and fragments, treats trailing
-slashes as equivalent, and covers nested paths. With the default `/admin`,
+and repeated slashes as equivalent, compares percent-decoded paths (so
+`/%61dmin` is caught too), and covers nested paths. With the default `/admin`,
 the paths `/admin`, `/admin/`, `/ADMIN`, and `/admin/login` are all
 intercepted, while `/administrator` and `/adminx` are not.
 

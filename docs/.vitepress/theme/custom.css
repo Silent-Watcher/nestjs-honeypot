@@ -1,0 +1,62 @@
+:root {
+  --vp-c-brand-1: #e0234e;
+  --vp-c-brand-2: #c81d44;
+  --vp-c-brand-3: #b01a3c;
+  --vp-c-brand-soft: rgba(224, 35, 78, 0.14);
+  --vp-button-brand-bg: #e0234e;
+  --vp-button-brand-hover-bg: #c81d44;
+  --vp-button-brand-active-bg: #b01a3c;
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #e0234e 20%, #f59e0b 90%);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #e0234e 30%, #f59e0b 70%);
+  --vp-home-hero-image-filter: blur(56px);
+}
+
+.dark {
+  --vp-c-brand-1: #ff4d73;
+  --vp-c-brand-2: #f0305a;
+  --vp-c-brand-3: #e0234e;
+  --vp-c-brand-soft: rgba(255, 77, 115, 0.16);
+}
+
+.VPHero .image-src {
+  max-width: 340px;
+  max-height: 340px;
+  filter: drop-shadow(0 12px 28px rgba(224, 35, 78, 0.25));
+}
+
+.VPHero .tagline {
+  max-width: 34rem;
+}
+
+.VPFeature {
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.VPFeature:hover {
+  transform: translateY(-3px);
+  border-color: var(--vp-c-brand-1);
+  box-shadow: 0 10px 24px rgba(224, 35, 78, 0.12);
+}
+
+.VPNavBarTitle .logo {
+  height: 26px;
+}
+
+.vp-doc div[class*='language-'] {
+  border-radius: 10px;
+}
+
+.vp-doc h1 {
+  letter-spacing: -0.02em;
+}
+
+.vp-doc .custom-block {
+  border-radius: 10px;
+}
+
+@media (max-width: 640px) {
+  .VPHero .image-src {
+    max-width: 220px;
+  }
+}

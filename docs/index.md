@@ -5,22 +5,74 @@ hero:
   name: nestjs-honeypot
   text: Admin-route honeypot for NestJS
   tagline: Intercept requests to a decoy admin path, record the intrusion attempt, and answer with a fake admin page or a redirect.
+  image:
+    src: /hero.svg
+    alt: NestJS logo inside a honeycomb
   actions:
     - theme: brand
-      text: Getting Started
+      text: Get Started
       link: /getting-started
     - theme: alt
       text: Configuration
       link: /configuration
+    - theme: alt
+      text: GitHub
+      link: https://github.com/Silent-Watcher/nestjs-honeypot
 
 features:
-  - title: Decoy admin page
+  - icon: 🍯
+    title: Decoy admin page
     details: Serves a believable login page at a configurable path (default /admin) without touching your real routes.
-  - title: Intrusion signals
+  - icon: 🚨
+    title: Intrusion signals
     details: Logs every hit and emits a honeypotHit event with method, path, IP and user agent — no credentials, ever.
-  - title: Nest-native
-    details: Dynamic module with forRoot / forRootAsync, class middleware, works with Express and Fastify adapters.
+  - icon: 🪺
+    title: Nest-native
+    details: Dynamic module with forRoot / forRootAsync and class middleware, registered through the standard lifecycle.
+  - icon: 🔀
+    title: Custom responses
+    details: Serve your own HTML, or send visitors away with a 302 redirect to any http/https URL or relative path.
+  - icon: ⚡
+    title: Express and Fastify
+    details: Built on the common Node.js HTTP contract and verified by integration tests against both adapters.
+  - icon: 📦
+    title: Zero dependencies
+    details: ESM and CommonJS builds with full TypeScript declarations. Nothing but NestJS in your dependency tree.
 ---
+
+## Quick start
+
+::: code-group
+
+```sh [npm]
+npm install nestjs-honeypot
+```
+
+```sh [pnpm]
+pnpm add nestjs-honeypot
+```
+
+```sh [yarn]
+yarn add nestjs-honeypot
+```
+
+:::
+
+```ts
+import { Module } from '@nestjs/common'
+import { HoneypotModule } from 'nestjs-honeypot'
+
+@Module({
+  imports: [HoneypotModule.forRoot({ path: '/admin' })],
+})
+export class AppModule {}
+```
+
+Every probe of `/admin` is now answered with the decoy and logged:
+
+```
+Honeypot hit: GET /admin from 203.0.113.7 (user-agent: Mozilla/5.0 …)
+```
 
 # What is a honeypot?
 
