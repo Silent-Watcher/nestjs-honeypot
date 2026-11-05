@@ -1,7 +1,16 @@
 {
   "name": "nestjs-honeypot",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Admin-route honeypot for NestJS applications",
+  "author": "SilentWatcher <alitabatabaee20@gmail.com>",
+  "homepage": "https://github.com/Silent-Watcher/nestjs-honeypot#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Silent-Watcher/nestjs-honeypot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Silent-Watcher/nestjs-honeypot/issues"
+  },
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -37,14 +46,20 @@
     "docs:preview": "vitepress preview docs",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "clean": "rm -rf dist coverage docs/.vitepress/dist docs/.vitepress/cache"
+    "clean": "rm -rf dist coverage docs/.vitepress/dist docs/.vitepress/cache",
+    "prepack": "pnpm build",
+    "pack:check": "pnpm pack --dry-run"
   },
   "keywords": [
-    "nestjs",
+    "decoy",
+    "express",
+    "fastify",
     "honeypot",
-    "security",
     "intrusion-detection",
-    "decoy"
+    "nestjs",
+    "nestjs-module",
+    "security",
+    "security-tools"
   ],
   "peerDependencies": {
     "@nestjs/common": "^11.0.0 || ^12.0.0",
