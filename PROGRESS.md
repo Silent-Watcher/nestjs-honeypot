@@ -4,19 +4,19 @@ Status tracker for AI agents. Update after every phase.
 
 ## Current stage
 
-**Phase 4 — complete.** Phase 5 documentation site was committed earlier
-(`fa9b85d`); visual polish + logo and Phase 6 release work follow.
+**All phases complete — `1.0.0` released locally (git tag `v1.0.0`).**
+Nothing is published to npm; publishing stays an explicit owner action.
 
 ## Phase status
 
-| Phase | Title                                  | Status         |
-| ----- | -------------------------------------- | -------------- |
-| 1     | Project Foundation                     | ✅ done        |
-| 2     | NestJS Module and Public API           | ✅ done        |
-| 3     | Core Honeypot Functionality            | ✅ done        |
-| 4     | Integration Tests + Feature Gap Review | ✅ done        |
-| 5     | VitePress Documentation + README       | ⬜ not started |
-| 6     | Final QA + Release Readiness           | ⬜ not started |
+| Phase | Title                                  | Status  |
+| ----- | -------------------------------------- | ------- |
+| 1     | Project Foundation                     | ✅ done |
+| 2     | NestJS Module and Public API           | ✅ done |
+| 3     | Core Honeypot Functionality            | ✅ done |
+| 4     | Integration Tests + Feature Gap Review | ✅ done |
+| 5     | VitePress Documentation + README       | ✅ done |
+| 6     | Final QA + Release Readiness           | ✅ done |
 
 ## Phase 1 — completed work
 
@@ -155,7 +155,36 @@ Known limitations (no code change):
 - Absolute `fakeAdminUrl` values are not loop-checked (origin unknown at
   configuration time).
 
-## Definition of done (final, phase 6)
+## Phase 5 — completed work
+
+Docs site (`docs/`): introduction, getting started, configuration, events,
+adapters, security, troubleshooting, API reference, README. Visual polish:
+`docs/public/{logo,favicon,hero}.svg` (NestJS logo in brand red, honeycomb
+hero), `docs/.vitepress/theme/{index.ts,custom.css}` (brand palette, gradient
+hero name, glow, card hover), nav logo, GitHub link, local search, edit link,
+footer, six feature cards with icons, quick-start with package-manager tabs.
+
+## Phase 6 — completed work
+
+- `pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm docs:build`
+  all green (123 tests).
+- Version management: `package.json` → `1.0.0` (author, homepage,
+  repository, bugs, extra keywords, `prepack` builds, `pack:check`),
+  `CHANGELOG.md` (Keep a Changelog + SemVer). Tag `v1.0.0` is annotated.
+- `pnpm pack` tarball contains only `dist/*`, `LICENSE`, `README.md`,
+  `package.json`.
+- Consumer smoke test from the packed tarball against NestJS 11 (the peer
+  range floor): ESM `import` and CJS `require` both serve the decoy
+  (including the percent-encoded `/%61dmin/login` variant).
+
+### Release workflow for later versions
+
+1. Update `CHANGELOG.md`; bump `version` in `package.json` (SemVer).
+2. Run the verification commands; commit `chore(release): x.y.z`.
+3. `git tag -a vx.y.z -m "nestjs-honeypot x.y.z"`; push commit and tag.
+4. `npm publish` only with owner approval.
+
+## Definition of done
 
 See AGENTS.md phase list; all commands green; `pnpm pack` archive clean; ESM +
 CJS consumers verified; no publishing.
